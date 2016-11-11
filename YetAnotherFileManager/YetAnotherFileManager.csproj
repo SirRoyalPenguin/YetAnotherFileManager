@@ -46,6 +46,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CustomListViewItem.cs" />
     <Compile Include="FileManagerUi.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -148,10 +148,11 @@
             // 
             // textBoxDirectoryPathLeft
             // 
+            this.textBoxDirectoryPathLeft.Cursor = System.Windows.Forms.Cursors.Default;
             this.textBoxDirectoryPathLeft.Dock = System.Windows.Forms.DockStyle.Top;
-            this.textBoxDirectoryPathLeft.Enabled = false;
             this.textBoxDirectoryPathLeft.Location = new System.Drawing.Point(0, 54);
             this.textBoxDirectoryPathLeft.Name = "textBoxDirectoryPathLeft";
+            this.textBoxDirectoryPathLeft.ReadOnly = true;
             this.textBoxDirectoryPathLeft.Size = new System.Drawing.Size(302, 20);
             this.textBoxDirectoryPathLeft.TabIndex = 1;
             // 
@@ -165,10 +166,11 @@
             // 
             // textBoxDirectoryPathRight
             // 
+            this.textBoxDirectoryPathRight.Cursor = System.Windows.Forms.Cursors.Default;
             this.textBoxDirectoryPathRight.Dock = System.Windows.Forms.DockStyle.Top;
-            this.textBoxDirectoryPathRight.Enabled = false;
             this.textBoxDirectoryPathRight.Location = new System.Drawing.Point(0, 54);
             this.textBoxDirectoryPathRight.Name = "textBoxDirectoryPathRight";
+            this.textBoxDirectoryPathRight.ReadOnly = true;
             this.textBoxDirectoryPathRight.Size = new System.Drawing.Size(339, 20);
             this.textBoxDirectoryPathRight.TabIndex = 1;
             // 
@@ -187,6 +189,7 @@
             this.TypeRight,
             this.LastModified});
             this.listViewRight.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.listViewRight.FullRowSelect = true;
             this.listViewRight.Location = new System.Drawing.Point(0, 74);
             this.listViewRight.Name = "listViewRight";
             this.listViewRight.Size = new System.Drawing.Size(339, 271);
