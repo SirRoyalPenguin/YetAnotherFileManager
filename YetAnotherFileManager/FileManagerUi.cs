@@ -5,14 +5,17 @@ using System.Linq;
 using System.DirectoryServices;
 using System.Windows.Forms;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace YetAnotherFileManager
 {
     public partial class FileManagerUi : Form
     {
-
+        private Regex RemoteFolderRootRegex;
         public FileManagerUi()
         {
+            RemoteFolderRootRegex = new Regex(@"^\\\\[^\\]+$");
+
             this.ResizeEnd += Form_ResizeEnd;
             InitializeComponent();
             InitDirPathTextBoxes();
@@ -49,10 +52,32 @@ namespace YetAnotherFileManager
 
         private void InitListViews()
         {
-            listViewLeft.MouseDoubleClick += ListView_MouseClick;
-            listViewRight.MouseDoubleClick +=ListView_MouseClick;
-        }
+            listViewLeft.MouseDoubleClick += ListView_MouseDoubleClick;
+            listViewRight.MouseDoubleClick +=ListView_MouseDoubleClick;
 
+            listViewLeft.KeyDown += ListView_KeyDown;
+        }
+        private void ListView_KeyDown(object sender, KeyEventArgs e)
+        {
+            var listView = (ListView)sender;
+            bool isLeftPanel = listView.Name == "listViewLeft";
+
+            if (e.KeyCode == Keys.F5)
+            {
+                try
+                {
+                    var selectedItem = listView.SelectedItems[0];
+                    var listItem = (CustomListViewItem)selectedItem;
+                    var fileName = listItem.FileInfo.Name;
+                    File.Copy(listItem.FullPath, textBoxDirectoryPathRight.Text + "\\" + fileName);
+                    RefreshListView(false, textBoxDirectoryPathRight.Text);
+                }
+                catch
+                {
+                    MessageBox.Show("Unable to copy");
+                }
+            }
+        }
         private void InitDirPathTextBoxes()
         {
             textBoxDirectoryPathLeft.MouseDoubleClick += DirPathTextBox_MouseDoubleClick;
@@ -65,7 +90,7 @@ namespace YetAnotherFileManager
             textBoxDirectoryPathRight.KeyUp += DirPathTextBox_KeyUp;
         }
 
-        private void ListView_MouseClick(object sender, MouseEventArgs e)
+        private void ListView_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             var listView = (ListView)sender;
             bool isLeftPanel = listView.Name == "listViewLeft";
@@ -147,6 +172,8 @@ namespace YetAnotherFileManager
                 var pathTextBox = listView.Parent.Controls.OfType<TextBox>().FirstOrDefault();
                 if (pathTextBox != null)
                 {
+                    if (dirPath.StartsWith("\\"))
+                        dirPath = dirPath.TrimEnd('\\');
                     pathTextBox.Text = dirPath;
                 }
 
@@ -156,8 +183,7 @@ namespace YetAnotherFileManager
                 {
                     ListRemoteServers(listView);
                 }
-                //todo: regex here "if dirpath only has \\ at the beginning"
-                else if (dirPath.StartsWith("\\\\"))
+                else if (RemoteFolderRootRegex.IsMatch(dirPath))
                 {
                     ListRemoteFiles(listView, dirPath);
                 }
@@ -169,9 +195,11 @@ namespace YetAnotherFileManager
 
                 ResizeColumnHeaders();
             }
-            catch
+            catch(Exception e)
             {
                 MessageBox.Show(string.Format("unable to access {0}", dirPath));
+                this.textBoxDirectoryPathLeft.Text = this.textBoxDirectoryPathRight.Text = string.Empty;
+                this.listViewLeft.Focus();
             }
 
         }
@@ -194,17 +222,24 @@ namespace YetAnotherFileManager
             }
         }
     
-        private void ListFiles(ListView listView, DirectoryInfo dirInfo)
+        private void ListFiles(ListView listView, DirectoryInfo dirInfo, bool listRoot=false)
         {
             CustomListViewItem item = null;
 
-            foreach (DirectoryInfo dir in dirInfo.GetDirectories())
+            if (listRoot)
             {
-              
-                item = CreateListViewItem(CustomListViewItemTypeEnum.Directory, dir, null);
+                item = CreateListViewItem(CustomListViewItemTypeEnum.Directory, dirInfo, null);
                 listView.Items.Add(item);
             }
+            else
+            {
+                foreach (DirectoryInfo dir in dirInfo.GetDirectories())
+                {
 
+                    item = CreateListViewItem(CustomListViewItemTypeEnum.Directory, dir, null);
+                    listView.Items.Add(item);
+                }
+            }
             foreach (FileInfo file in dirInfo.GetFiles())
             {
                 item = CreateListViewItem(CustomListViewItemTypeEnum.File,null, file);
@@ -225,7 +260,7 @@ namespace YetAnotherFileManager
                     }
 
                     DirectoryInfo d = si.Root;
-                    ListFiles(listView, d);
+                    ListFiles(listView, d, true);
 
                 }
             }
@@ -242,7 +277,7 @@ namespace YetAnotherFileManager
             item.FileInfo = fInfo;
 
             var subItems = new ListViewItem.ListViewSubItem[]
-                      {new ListViewItem.ListViewSubItem(item, "Directory"),
+                      {new ListViewItem.ListViewSubItem(item, itemType.ToString()),
                    new ListViewItem.ListViewSubItem(item,
                 lastAccessTime.ToShortDateString())};
             item.SubItems.AddRange(subItems);
