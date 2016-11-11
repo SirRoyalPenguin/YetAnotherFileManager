@@ -1,14 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.DirectoryServices;
 using System.Windows.Forms;
-using System.Runtime.InteropServices;
 
 namespace YetAnotherFileManager
 {
@@ -47,8 +42,8 @@ namespace YetAnotherFileManager
                 flowPanelRightDisks.Controls.Add(createButton(drive.Name, BtnDisk_Click));
             }
 
-            flowPanelLeftDisks.Controls.Add(createButton("\\", BtnRemoteDisk_Click));
-            flowPanelRightDisks.Controls.Add(createButton("\\", BtnRemoteDisk_Click));
+            flowPanelLeftDisks.Controls.Add(createButton("\\\\", BtnRemoteDisk_Click));
+            flowPanelRightDisks.Controls.Add(createButton("\\\\", BtnRemoteDisk_Click));
         }
 
         private void InitListViews()
@@ -153,14 +148,19 @@ namespace YetAnotherFileManager
 
                 listView.Items.Clear();
 
-                if (!dirPath.StartsWith("\\"))
+                if(dirPath.Equals("\\\\"))
                 {
-                    var dirInfo = new DirectoryInfo(dirPath);
-                    ListFiles(listView, dirInfo);
+                    ListRemoteServers(listView);
+                }
+                //todo: regex here "if dirpath only has \\ at the beginning"
+                else if (dirPath.StartsWith("\\\\"))
+                {
+                    ListRemoteFiles(listView, dirPath);
                 }
                 else
                 {
-                    ListRemoteFiles(listView, dirPath);
+                    var dirInfo = new DirectoryInfo(dirPath);
+                    ListFiles(listView, dirInfo);
                 }
 
                 ResizeColumnHeaders();
@@ -172,6 +172,24 @@ namespace YetAnotherFileManager
 
         }
 
+        private void ListRemoteServers(ListView listView)
+        {
+            DirectoryEntry root = new DirectoryEntry("WinNT:");
+
+            foreach (DirectoryEntry computers in root.Children)
+            {
+                foreach (DirectoryEntry computer in computers.Children)
+                {
+                   
+                    if (computer.Name == "Schema" || computer.SchemaClassName != "Computer")
+                        continue;
+
+                    var item = CreateListViewItem(CustomListViewItemTypeEnum.RemoteDirectory, null, null);
+                    listView.Items.Add(item);
+                }
+            }
+        }
+    
         private void ListFiles(ListView listView, DirectoryInfo dirInfo)
         {
             CustomListViewItem item = null;
