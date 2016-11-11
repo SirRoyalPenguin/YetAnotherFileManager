@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.DirectoryServices;
 using System.Windows.Forms;
+using System.Diagnostics;
 
 namespace YetAnotherFileManager
 {
@@ -77,7 +78,10 @@ namespace YetAnotherFileManager
             }
             else
             {
-                listView.SelectedItems.Clear();
+                Process proc = new Process();
+                proc.StartInfo.FileName = item.FileInfo.FullName;
+                proc.StartInfo.UseShellExecute = true;
+                proc.Start();
             }
         }
 
