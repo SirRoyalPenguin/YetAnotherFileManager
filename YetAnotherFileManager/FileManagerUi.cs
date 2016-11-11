@@ -28,7 +28,7 @@ namespace YetAnotherFileManager
         {
             var drives = DriveInfo.GetDrives();
             var btnFont = new Font("Arial", 8);
-            Func<string, Button> createButton = delegate (string name)
+            Func<string,EventHandler, Button> createButton = delegate (string name, EventHandler click)
             {
                 var btn = new Button
                 {
@@ -37,15 +37,18 @@ namespace YetAnotherFileManager
                     Height = 24,
                     Width = 32
                 };
-                btn.Click += BtnDisk_Click;
+                btn.Click += click;
                 return btn;
             };
 
             foreach(var drive in drives)
             {
-                flowPanelLeftDisks.Controls.Add(createButton(drive.Name));
-                flowPanelRightDisks.Controls.Add(createButton(drive.Name));
+                flowPanelLeftDisks.Controls.Add(createButton(drive.Name, BtnDisk_Click));
+                flowPanelRightDisks.Controls.Add(createButton(drive.Name, BtnDisk_Click));
             }
+
+            flowPanelLeftDisks.Controls.Add(createButton("\\", BtnRemoteDisk_Click));
+            flowPanelRightDisks.Controls.Add(createButton("\\", BtnRemoteDisk_Click));
         }
 
         private void InitListViews()
@@ -56,8 +59,8 @@ namespace YetAnotherFileManager
 
         private void InitDirPathTextBoxes()
         {
-            textBoxDirectoryPathLeft.MouseClick += DirPathTextBox_MouseClick;
-            textBoxDirectoryPathRight.MouseClick += DirPathTextBox_MouseClick;
+            textBoxDirectoryPathLeft.MouseDoubleClick += DirPathTextBox_MouseDoubleClick;
+            textBoxDirectoryPathRight.MouseDoubleClick += DirPathTextBox_MouseDoubleClick;
 
             textBoxDirectoryPathLeft.LostFocus += DirPathTextBox_LostFocus;
             textBoxDirectoryPathRight.LostFocus += DirPathTextBox_LostFocus;
@@ -83,7 +86,7 @@ namespace YetAnotherFileManager
             }
         }
 
-        private void DirPathTextBox_MouseClick(object sender, MouseEventArgs e)
+        private void DirPathTextBox_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             var textBox = (TextBox)sender;
 
@@ -91,8 +94,12 @@ namespace YetAnotherFileManager
         }
         private void DirPathTextBoxLostFocus(TextBox textBox)
         {
-            bool isLeftPanel = textBox.Name == "textBoxDirectoryPathLeft";
             textBox.ReadOnly = true;
+
+            if (string.IsNullOrEmpty(textBox.Text))
+                return;
+
+            bool isLeftPanel = textBox.Name == "textBoxDirectoryPathLeft";
 
             RefreshListView(isLeftPanel, textBox.Text);
         }
@@ -123,6 +130,16 @@ namespace YetAnotherFileManager
             RefreshListView(isLeftPanel, diskName);
         }
 
+        private void BtnRemoteDisk_Click(object sender, EventArgs e)
+        {
+            var btn = (Button)sender;
+            var diskName = (btn).Text;
+
+            var parent = (FlowLayoutPanel)btn.Parent;
+            bool isLeftPanel = parent.Name == "flowPanelLeftDisks";
+            RefreshListView(isLeftPanel, diskName);
+        }
+
         private void RefreshListView(bool isLeftPanel, string dirPath)
         {
             try
@@ -133,34 +150,17 @@ namespace YetAnotherFileManager
                 {
                     pathTextBox.Text = dirPath;
                 }
+
                 listView.Items.Clear();
-                var dirInfo = new DirectoryInfo(dirPath);
-                ListViewItem.ListViewSubItem[] subItems;
-                CustomListViewItem item = null;
-                foreach (DirectoryInfo dir in dirInfo.GetDirectories())
-                {
-                    item = new CustomListViewItem(dir.Name, 0);
-                    item.DirectoryInfo = dir;
 
-                    subItems = new ListViewItem.ListViewSubItem[]
-                              {new ListViewItem.ListViewSubItem(item, "Directory"),
-                   new ListViewItem.ListViewSubItem(item,
-                dir.LastAccessTime.ToShortDateString())};
-                    item.SubItems.AddRange(subItems);
-                    listView.Items.Add(item);
+                if (!dirPath.StartsWith("\\"))
+                {
+                    var dirInfo = new DirectoryInfo(dirPath);
+                    ListFiles(listView, dirInfo);
                 }
-                foreach (FileInfo file in dirInfo.GetFiles())
+                else
                 {
-                    item = new CustomListViewItem(file.Name, 1);
-                    item.FileInfo = file;
-
-                    subItems = new ListViewItem.ListViewSubItem[]
-                              { new ListViewItem.ListViewSubItem(item, "File"),
-                   new ListViewItem.ListViewSubItem(item,
-                file.LastAccessTime.ToShortDateString())};
-
-                    item.SubItems.AddRange(subItems);
-                    listView.Items.Add(item);
+                    ListRemoteFiles(listView, dirPath);
                 }
 
                 ResizeColumnHeaders();
@@ -170,6 +170,61 @@ namespace YetAnotherFileManager
                 MessageBox.Show(string.Format("unable to access {0}", dirPath));
             }
 
+        }
+
+        private void ListFiles(ListView listView, DirectoryInfo dirInfo)
+        {
+            CustomListViewItem item = null;
+
+            foreach (DirectoryInfo dir in dirInfo.GetDirectories())
+            {
+              
+                item = CreateListViewItem(CustomListViewItemTypeEnum.Directory, dir, null);
+                listView.Items.Add(item);
+            }
+
+            foreach (FileInfo file in dirInfo.GetFiles())
+            {
+                item = CreateListViewItem(CustomListViewItemTypeEnum.File,null, file);
+                listView.Items.Add(item);
+            }
+        }
+
+        private void ListRemoteFiles(ListView listView, string path)
+        {
+            var shi = ShareCollection.GetShares(path);
+            if (shi != null)
+            {
+                foreach (Share si in shi)
+                {
+                    if (!si.IsFileSystem || si.ShareType != ShareType.Disk)
+                    {
+                        continue;
+                    }
+
+                    DirectoryInfo d = si.Root;
+                    ListFiles(listView, d);
+
+                }
+            }
+        }
+
+        private CustomListViewItem CreateListViewItem(CustomListViewItemTypeEnum itemType, DirectoryInfo dirInfo, FileInfo fInfo)
+        {
+            bool isDir = itemType != CustomListViewItemTypeEnum.File;
+            var name = isDir ? dirInfo.Name : fInfo.Name;
+            var lastAccessTime = isDir ? dirInfo.LastAccessTime : fInfo.LastAccessTime;
+
+            var item = new CustomListViewItem(name, (int)itemType);
+            item.DirectoryInfo = dirInfo;
+            item.FileInfo = fInfo;
+
+            var subItems = new ListViewItem.ListViewSubItem[]
+                      {new ListViewItem.ListViewSubItem(item, "Directory"),
+                   new ListViewItem.ListViewSubItem(item,
+                lastAccessTime.ToShortDateString())};
+            item.SubItems.AddRange(subItems);
+            return item;
         }
 
         private void Form_ResizeEnd(object sender, EventArgs e)

@@ -144,7 +144,8 @@
             this.imageList1.ImageStream = ((System.Windows.Forms.ImageListStreamer)(resources.GetObject("imageList1.ImageStream")));
             this.imageList1.TransparentColor = System.Drawing.Color.Transparent;
             this.imageList1.Images.SetKeyName(0, "folder-close.png");
-            this.imageList1.Images.SetKeyName(1, "file.png");
+            this.imageList1.Images.SetKeyName(1, "network_local.png");
+            this.imageList1.Images.SetKeyName(2, "file.png");
             // 
             // textBoxDirectoryPathLeft
             // 
