@@ -12,43 +12,24 @@ namespace YetAnotherFileManager
     public partial class FileManagerUi : Form
     {
         private Regex RemoteFolderRootRegex;
+        private string BeforeEditItemValue;
+
         public FileManagerUi()
         {
             RemoteFolderRootRegex = new Regex(@"^\\\\[^\\]+$");
 
             this.ResizeEnd += Form_ResizeEnd;
+
             InitializeComponent();
             InitDirPathTextBoxes();
             InitListViews();
             InitDiskButtons();
+
+            this.toolStripButtonHelp.Click += Help_MouseClick;
+            this.toolStripButtonAbout.Click += About_MouseClick;
         }
 
-        private void InitDiskButtons()
-        {
-            var drives = DriveInfo.GetDrives();
-            var btnFont = new Font("Arial", 8);
-            Func<string,EventHandler, Button> createButton = delegate (string name, EventHandler click)
-            {
-                var btn = new Button
-                {
-                    Text = name,
-                    Font = btnFont,
-                    Height = 24,
-                    Width = 32
-                };
-                btn.Click += click;
-                return btn;
-            };
-
-            foreach(var drive in drives)
-            {
-                flowPanelLeftDisks.Controls.Add(createButton(drive.Name, BtnDisk_Click));
-                flowPanelRightDisks.Controls.Add(createButton(drive.Name, BtnDisk_Click));
-            }
-
-            flowPanelLeftDisks.Controls.Add(createButton("\\\\", BtnRemoteDisk_Click));
-            flowPanelRightDisks.Controls.Add(createButton("\\\\", BtnRemoteDisk_Click));
-        }
+     
 
         private void InitListViews()
         {
@@ -57,6 +38,12 @@ namespace YetAnotherFileManager
 
             listViewLeft.KeyDown += ListView_KeyDown;
             listViewRight.KeyDown += ListView_KeyDown;
+
+            listViewLeft.BeforeLabelEdit += new LabelEditEventHandler(ListView_BeforeLabelEdit);
+            listViewRight.BeforeLabelEdit += new LabelEditEventHandler(ListView_BeforeLabelEdit);
+
+            listViewLeft.AfterLabelEdit += new LabelEditEventHandler(ListView_AfterLabelEdit);
+            listViewRight.AfterLabelEdit += new LabelEditEventHandler(ListView_AfterLabelEdit);
         }
         private void ListView_KeyDown(object sender, KeyEventArgs e)
         {
@@ -84,7 +71,7 @@ namespace YetAnotherFileManager
                 }
                 catch(Exception ex)
                 {
-                    MessageBox.Show("Unable to copy");
+                    MessageBox.Show(ex.Message);
                 }
             }
             if(e.KeyCode == Keys.Delete)
@@ -98,7 +85,7 @@ namespace YetAnotherFileManager
                     }
                     catch(Exception ex)
                     {
-                        MessageBox.Show("Unable to delete");
+                        MessageBox.Show(ex.Message);
                     }
 
                     RefreshListView(isLeftPanel);
@@ -110,18 +97,42 @@ namespace YetAnotherFileManager
                 }
             }
         }
-        private void InitDirPathTextBoxes()
+        private void ListView_BeforeLabelEdit(object sender, LabelEditEventArgs e)
         {
-            textBoxDirectoryPathLeft.MouseDoubleClick += DirPathTextBox_MouseDoubleClick;
-            textBoxDirectoryPathRight.MouseDoubleClick += DirPathTextBox_MouseDoubleClick;
+            var listView = (ListView)sender;
+            BeforeEditItemValue = listView.Items[e.Item].Text;
 
-            textBoxDirectoryPathLeft.LostFocus += DirPathTextBox_LostFocus;
-            textBoxDirectoryPathRight.LostFocus += DirPathTextBox_LostFocus;
-
-            textBoxDirectoryPathLeft.KeyUp += DirPathTextBox_KeyUp;
-            textBoxDirectoryPathRight.KeyUp += DirPathTextBox_KeyUp;
         }
+        private void ListView_AfterLabelEdit(object sender, LabelEditEventArgs e)
+        {
+            var listView = (ListView)sender;
+            var afterEditValue = e.Label;
+            if (string.IsNullOrEmpty(afterEditValue)) return;
+            if (string.Equals(BeforeEditItemValue, afterEditValue)) return;
 
+            var item = (CustomListViewItem)listView.Items[e.Item];
+            try
+            {
+                if (item.Type != CustomListViewItemTypeEnum.File)
+                {
+                    var src = item.FullPath;
+                    var dest = item.DirectoryInfo.Parent.FullName + "\\" + afterEditValue;
+                    Directory.Move(src, dest);
+                }
+                else
+                {
+                    var src = item.FullPath;
+                    var dest = item.FileInfo.DirectoryName + "\\" + afterEditValue;
+                    File.Move(src, dest);
+                }
+                RefreshListView(true);
+                RefreshListView(false);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
         private void ListView_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             var listView = (ListView)sender;
@@ -135,13 +146,31 @@ namespace YetAnotherFileManager
             }
             else
             {
-                Process proc = new Process();
-                proc.StartInfo.FileName = item.FileInfo.FullName;
-                proc.StartInfo.UseShellExecute = true;
-                proc.Start();
+                try
+                {
+                    Process proc = new Process();
+                    proc.StartInfo.FileName = item.FileInfo.FullName;
+                    proc.StartInfo.UseShellExecute = true;
+                    proc.Start();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
             }
         }
 
+        private void InitDirPathTextBoxes()
+        {
+            textBoxDirectoryPathLeft.MouseDoubleClick += DirPathTextBox_MouseDoubleClick;
+            textBoxDirectoryPathRight.MouseDoubleClick += DirPathTextBox_MouseDoubleClick;
+
+            textBoxDirectoryPathLeft.LostFocus += DirPathTextBox_LostFocus;
+            textBoxDirectoryPathRight.LostFocus += DirPathTextBox_LostFocus;
+
+            textBoxDirectoryPathLeft.KeyUp += DirPathTextBox_KeyUp;
+            textBoxDirectoryPathRight.KeyUp += DirPathTextBox_KeyUp;
+        }
         private void DirPathTextBox_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             var textBox = (TextBox)sender;
@@ -164,7 +193,6 @@ namespace YetAnotherFileManager
             var textBox = (TextBox)sender;
             DirPathTextBoxLostFocus(textBox);
         }
-
         private void DirPathTextBox_KeyUp(object sender, KeyEventArgs e)
         {
             if (e.KeyCode != Keys.Enter)
@@ -176,6 +204,32 @@ namespace YetAnotherFileManager
             DirPathTextBoxLostFocus(textBox);
         }
 
+        private void InitDiskButtons()
+        {
+            var drives = DriveInfo.GetDrives();
+            var btnFont = new Font("Arial", 8);
+            Func<string, EventHandler, Button> createButton = delegate (string name, EventHandler click)
+            {
+                var btn = new Button
+                {
+                    Text = name,
+                    Font = btnFont,
+                    Height = 24,
+                    Width = 32
+                };
+                btn.Click += click;
+                return btn;
+            };
+
+            foreach (var drive in drives)
+            {
+                flowPanelLeftDisks.Controls.Add(createButton(drive.Name, BtnDisk_Click));
+                flowPanelRightDisks.Controls.Add(createButton(drive.Name, BtnDisk_Click));
+            }
+
+            flowPanelLeftDisks.Controls.Add(createButton("\\\\", BtnRemoteDisk_Click));
+            flowPanelRightDisks.Controls.Add(createButton("\\\\", BtnRemoteDisk_Click));
+        }
         private void BtnDisk_Click(object sender, EventArgs e)
         {
             var btn = (Button)sender;
@@ -185,7 +239,6 @@ namespace YetAnotherFileManager
             bool isLeftPanel = parent.Name == "flowPanelLeftDisks";
             RefreshListView(isLeftPanel, diskName);
         }
-
         private void BtnRemoteDisk_Click(object sender, EventArgs e)
         {
             var btn = (Button)sender;
@@ -194,54 +247,6 @@ namespace YetAnotherFileManager
             var parent = (FlowLayoutPanel)btn.Parent;
             bool isLeftPanel = parent.Name == "flowPanelLeftDisks";
             RefreshListView(isLeftPanel, diskName);
-        }
-
-        private void RefreshListView(bool isLeftPanel, string dirPath="")
-        {
-            try
-            {
-                var listView = isLeftPanel ? listViewLeft : listViewRight;
-                if (string.IsNullOrEmpty(dirPath))
-                {
-                    dirPath = isLeftPanel ? textBoxDirectoryPathLeft.Text : textBoxDirectoryPathRight.Text;
-                }
-
-                if (string.IsNullOrEmpty(dirPath))
-                    return;
-
-                var pathTextBox = listView.Parent.Controls.OfType<TextBox>().FirstOrDefault();
-                if (pathTextBox != null)
-                {
-                    if (dirPath.StartsWith("\\") && !dirPath.Equals("\\\\"))
-                        dirPath = dirPath.TrimEnd('\\');
-                    pathTextBox.Text = dirPath;
-                }
-
-                listView.Items.Clear();
-
-                if(dirPath.Equals("\\\\"))
-                {
-                    ListRemoteServers(listView);
-                }
-                else if (RemoteFolderRootRegex.IsMatch(dirPath))
-                {
-                    ListRemoteFiles(listView, dirPath);
-                }
-                else
-                {
-                    var dirInfo = new DirectoryInfo(dirPath);
-                    ListFiles(listView, dirInfo);
-                }
-
-                ResizeColumnHeaders();
-            }
-            catch(Exception e)
-            {
-                MessageBox.Show(string.Format("unable to access {0}", dirPath));
-                this.textBoxDirectoryPathLeft.Text = this.textBoxDirectoryPathRight.Text = string.Empty;
-                this.listViewLeft.Focus();
-            }
-
         }
 
         private void ListRemoteServers(ListView listView)
@@ -280,11 +285,12 @@ namespace YetAnotherFileManager
                     item = CreateListViewItem(CustomListViewItemTypeEnum.Directory, dir, null);
                     listView.Items.Add(item);
                 }
-            }
-            foreach (FileInfo file in dirInfo.GetFiles())
-            {
-                item = CreateListViewItem(CustomListViewItemTypeEnum.File,null, file);
-                listView.Items.Add(item);
+
+                foreach (FileInfo file in dirInfo.GetFiles())
+                {
+                    item = CreateListViewItem(CustomListViewItemTypeEnum.File, null, file);
+                    listView.Items.Add(item);
+                }
             }
         }
 
@@ -307,6 +313,53 @@ namespace YetAnotherFileManager
             }
         }
 
+        private void RefreshListView(bool isLeftPanel, string dirPath = "")
+        {
+            try
+            {
+                var listView = isLeftPanel ? listViewLeft : listViewRight;
+                if (string.IsNullOrEmpty(dirPath))
+                {
+                    dirPath = isLeftPanel ? textBoxDirectoryPathLeft.Text : textBoxDirectoryPathRight.Text;
+                }
+
+                if (string.IsNullOrEmpty(dirPath))
+                    return;
+
+                var pathTextBox = listView.Parent.Controls.OfType<TextBox>().FirstOrDefault();
+                if (pathTextBox != null)
+                {
+                    if (dirPath.StartsWith("\\") && !dirPath.Equals("\\\\"))
+                        dirPath = dirPath.TrimEnd('\\');
+                    pathTextBox.Text = dirPath;
+                }
+
+                listView.Items.Clear();
+
+                if (dirPath.Equals("\\\\"))
+                {
+                    ListRemoteServers(listView);
+                }
+                else if (RemoteFolderRootRegex.IsMatch(dirPath))
+                {
+                    ListRemoteFiles(listView, dirPath);
+                }
+                else
+                {
+                    var dirInfo = new DirectoryInfo(dirPath);
+                    ListFiles(listView, dirInfo);
+                }
+
+                ResizeColumnHeaders();
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(string.Format("unable to access {0}", dirPath));
+                this.textBoxDirectoryPathLeft.Text = this.textBoxDirectoryPathRight.Text = string.Empty;
+                this.listViewLeft.Focus();
+            }
+
+        }
         private CustomListViewItem CreateListViewItem(CustomListViewItemTypeEnum itemType, DirectoryInfo dirInfo, FileInfo fInfo)
         {
             bool isDir = itemType != CustomListViewItemTypeEnum.File;
@@ -349,11 +402,19 @@ namespace YetAnotherFileManager
         {
             ResizeColumnHeaders();
         }
-
         private void ResizeColumnHeaders()
         {
             listViewLeft.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
             listViewRight.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+        }
+
+        private void Help_MouseClick(object sender, EventArgs e)
+        {
+            MessageBox.Show("F5 - Copy \nDel - delete \nSingle click - Rename\n\nSorry, no folder operations support yet.", "Help");
+        }
+        private void About_MouseClick(object sender, EventArgs e)
+        {
+            MessageBox.Show("This software is made by a family of antarctic penguins.", "About");
         }
     }
 }

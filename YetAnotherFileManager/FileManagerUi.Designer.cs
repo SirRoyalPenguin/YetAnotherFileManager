@@ -41,12 +41,12 @@
             this.imageList1 = new System.Windows.Forms.ImageList(this.components);
             this.textBoxDirectoryPathLeft = new System.Windows.Forms.TextBox();
             this.flowPanelLeftDisks = new System.Windows.Forms.FlowLayoutPanel();
-            this.textBoxDirectoryPathRight = new System.Windows.Forms.TextBox();
-            this.flowPanelRightDisks = new System.Windows.Forms.FlowLayoutPanel();
             this.listViewRight = new System.Windows.Forms.ListView();
             this.NameRight = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.TypeRight = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.LastModified = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.textBoxDirectoryPathRight = new System.Windows.Forms.TextBox();
+            this.flowPanelRightDisks = new System.Windows.Forms.FlowLayoutPanel();
             this.topToolStrip.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -116,6 +116,7 @@
             this.LastModifiedLeft});
             this.listViewLeft.Dock = System.Windows.Forms.DockStyle.Fill;
             this.listViewLeft.FullRowSelect = true;
+            this.listViewLeft.LabelEdit = true;
             this.listViewLeft.Location = new System.Drawing.Point(0, 74);
             this.listViewLeft.Name = "listViewLeft";
             this.listViewLeft.Size = new System.Drawing.Size(302, 271);
@@ -165,24 +166,6 @@
             this.flowPanelLeftDisks.Size = new System.Drawing.Size(302, 54);
             this.flowPanelLeftDisks.TabIndex = 0;
             // 
-            // textBoxDirectoryPathRight
-            // 
-            this.textBoxDirectoryPathRight.Cursor = System.Windows.Forms.Cursors.Default;
-            this.textBoxDirectoryPathRight.Dock = System.Windows.Forms.DockStyle.Top;
-            this.textBoxDirectoryPathRight.Location = new System.Drawing.Point(0, 54);
-            this.textBoxDirectoryPathRight.Name = "textBoxDirectoryPathRight";
-            this.textBoxDirectoryPathRight.ReadOnly = true;
-            this.textBoxDirectoryPathRight.Size = new System.Drawing.Size(339, 20);
-            this.textBoxDirectoryPathRight.TabIndex = 1;
-            // 
-            // flowPanelRightDisks
-            // 
-            this.flowPanelRightDisks.Dock = System.Windows.Forms.DockStyle.Top;
-            this.flowPanelRightDisks.Location = new System.Drawing.Point(0, 0);
-            this.flowPanelRightDisks.Name = "flowPanelRightDisks";
-            this.flowPanelRightDisks.Size = new System.Drawing.Size(339, 54);
-            this.flowPanelRightDisks.TabIndex = 0;
-            // 
             // listViewRight
             // 
             this.listViewRight.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
@@ -191,6 +174,7 @@
             this.LastModified});
             this.listViewRight.Dock = System.Windows.Forms.DockStyle.Fill;
             this.listViewRight.FullRowSelect = true;
+            this.listViewRight.LabelEdit = true;
             this.listViewRight.Location = new System.Drawing.Point(0, 74);
             this.listViewRight.Name = "listViewRight";
             this.listViewRight.Size = new System.Drawing.Size(339, 271);
@@ -210,6 +194,24 @@
             // LastModified
             // 
             this.LastModified.Text = "LastModified";
+            // 
+            // textBoxDirectoryPathRight
+            // 
+            this.textBoxDirectoryPathRight.Cursor = System.Windows.Forms.Cursors.Default;
+            this.textBoxDirectoryPathRight.Dock = System.Windows.Forms.DockStyle.Top;
+            this.textBoxDirectoryPathRight.Location = new System.Drawing.Point(0, 54);
+            this.textBoxDirectoryPathRight.Name = "textBoxDirectoryPathRight";
+            this.textBoxDirectoryPathRight.ReadOnly = true;
+            this.textBoxDirectoryPathRight.Size = new System.Drawing.Size(339, 20);
+            this.textBoxDirectoryPathRight.TabIndex = 1;
+            // 
+            // flowPanelRightDisks
+            // 
+            this.flowPanelRightDisks.Dock = System.Windows.Forms.DockStyle.Top;
+            this.flowPanelRightDisks.Location = new System.Drawing.Point(0, 0);
+            this.flowPanelRightDisks.Name = "flowPanelRightDisks";
+            this.flowPanelRightDisks.Size = new System.Drawing.Size(339, 54);
+            this.flowPanelRightDisks.TabIndex = 0;
             // 
             // FileManagerUi
             // 
