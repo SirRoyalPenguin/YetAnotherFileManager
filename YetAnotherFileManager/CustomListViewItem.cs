@@ -8,18 +8,23 @@ namespace YetAnotherFileManager
         public DirectoryInfo DirectoryInfo { get; set; }
         public FileInfo FileInfo { get; set; }
 
+        public CustomListViewItemTypeEnum Type { get; set; }
+
         public string FullPath
         {
             get
             {
-                return IsDirectory ? DirectoryInfo.FullName : FileInfo.FullName;
-            }
-        }
-        public bool IsDirectory
-        {
-            get
-            {
-                return DirectoryInfo != null;
+                switch(Type)
+                {
+                    case CustomListViewItemTypeEnum.Directory:
+                        return DirectoryInfo.FullName;
+                    case CustomListViewItemTypeEnum.File:
+                        return FileInfo.FullName;
+                    case CustomListViewItemTypeEnum.RemoteDirectory:
+                        return "\\\\" + DirectoryInfo.Name;
+                    default:
+                        return string.Empty;
+                }
             }
         }
 

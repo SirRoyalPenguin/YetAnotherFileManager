@@ -56,25 +56,57 @@ namespace YetAnotherFileManager
             listViewRight.MouseDoubleClick +=ListView_MouseDoubleClick;
 
             listViewLeft.KeyDown += ListView_KeyDown;
+            listViewRight.KeyDown += ListView_KeyDown;
         }
         private void ListView_KeyDown(object sender, KeyEventArgs e)
         {
             var listView = (ListView)sender;
             bool isLeftPanel = listView.Name == "listViewLeft";
 
+            var sourceListView = isLeftPanel ? listViewLeft : listViewRight;
+            var destPath = isLeftPanel ? textBoxDirectoryPathRight.Text : textBoxDirectoryPathLeft.Text;
+            var selectedItem = (CustomListViewItem)sourceListView.SelectedItems[0];
+
+            if(selectedItem.Type != CustomListViewItemTypeEnum.File)
+            {
+                MessageBox.Show("Alas, theese features not implemented for directories yet");
+                return;
+            }
+
+            var fileName = selectedItem.FileInfo.Name;
+
             if (e.KeyCode == Keys.F5)
             {
                 try
                 {
-                    var selectedItem = listView.SelectedItems[0];
-                    var listItem = (CustomListViewItem)selectedItem;
-                    var fileName = listItem.FileInfo.Name;
-                    File.Copy(listItem.FullPath, textBoxDirectoryPathRight.Text + "\\" + fileName);
-                    RefreshListView(false, textBoxDirectoryPathRight.Text);
+                    File.Copy(selectedItem.FullPath, destPath + "\\" + fileName);
+                    RefreshListView(!isLeftPanel, destPath);
                 }
-                catch
+                catch(Exception ex)
                 {
                     MessageBox.Show("Unable to copy");
+                }
+            }
+            if(e.KeyCode == Keys.Delete)
+            {
+                var dialogResult = MessageBox.Show(string.Format("Are you sure you want to delete {0} forever?", fileName), "Think twice", MessageBoxButtons.YesNo);
+                if (dialogResult == DialogResult.Yes)
+                {
+                    try
+                    {
+                        File.Delete(selectedItem.FullPath);
+                    }
+                    catch(Exception ex)
+                    {
+                        MessageBox.Show("Unable to delete");
+                    }
+
+                    RefreshListView(isLeftPanel);
+                    RefreshListView(!isLeftPanel);
+                }
+                else if (dialogResult == DialogResult.No)
+                {
+                    return;
                 }
             }
         }
@@ -97,7 +129,7 @@ namespace YetAnotherFileManager
             ListViewHitTestInfo info = listView.HitTest(e.X, e.Y);
             CustomListViewItem item = (CustomListViewItem)info.Item;
 
-            if (item != null && item.IsDirectory)
+            if (item != null && item.Type == CustomListViewItemTypeEnum.Directory || item.Type == CustomListViewItemTypeEnum.RemoteDirectory)
             {
                 RefreshListView(isLeftPanel, item.FullPath);
             }
@@ -164,15 +196,23 @@ namespace YetAnotherFileManager
             RefreshListView(isLeftPanel, diskName);
         }
 
-        private void RefreshListView(bool isLeftPanel, string dirPath)
+        private void RefreshListView(bool isLeftPanel, string dirPath="")
         {
             try
             {
                 var listView = isLeftPanel ? listViewLeft : listViewRight;
+                if (string.IsNullOrEmpty(dirPath))
+                {
+                    dirPath = isLeftPanel ? textBoxDirectoryPathLeft.Text : textBoxDirectoryPathRight.Text;
+                }
+
+                if (string.IsNullOrEmpty(dirPath))
+                    return;
+
                 var pathTextBox = listView.Parent.Controls.OfType<TextBox>().FirstOrDefault();
                 if (pathTextBox != null)
                 {
-                    if (dirPath.StartsWith("\\"))
+                    if (dirPath.StartsWith("\\") && !dirPath.Equals("\\\\"))
                         dirPath = dirPath.TrimEnd('\\');
                     pathTextBox.Text = dirPath;
                 }
@@ -213,10 +253,11 @@ namespace YetAnotherFileManager
                 foreach (DirectoryEntry computer in computers.Children)
                 {
                    
-                    if (computer.Name == "Schema" || computer.SchemaClassName != "Computer")
+                    if (computer == null || computer.SchemaClassName != "Computer")
                         continue;
 
-                    var item = CreateListViewItem(CustomListViewItemTypeEnum.RemoteDirectory, null, null);
+                    var di = new DirectoryInfo("\\"+computer.Name);
+                    var item = CreateListViewItem(CustomListViewItemTypeEnum.RemoteDirectory, di, null);
                     listView.Items.Add(item);
                 }
             }
@@ -269,17 +310,37 @@ namespace YetAnotherFileManager
         private CustomListViewItem CreateListViewItem(CustomListViewItemTypeEnum itemType, DirectoryInfo dirInfo, FileInfo fInfo)
         {
             bool isDir = itemType != CustomListViewItemTypeEnum.File;
-            var name = isDir ? dirInfo.Name : fInfo.Name;
-            var lastAccessTime = isDir ? dirInfo.LastAccessTime : fInfo.LastAccessTime;
+            string name = string.Empty;
+            string lastAccessTime = string.Empty;
+
+            switch(itemType)
+            {
+                case CustomListViewItemTypeEnum.Directory:
+                    name = dirInfo.Name;
+                    lastAccessTime = dirInfo.LastAccessTime.ToShortDateString();
+                    break;
+                case CustomListViewItemTypeEnum.File:
+                    name = fInfo.Name;
+                    lastAccessTime = fInfo.LastAccessTime.ToShortDateString();
+                    break;
+                case CustomListViewItemTypeEnum.RemoteDirectory:
+                    name = "\\\\" + dirInfo.Name;
+                    break;
+                default:
+                    name = string.Empty;
+                    break;
+            }
 
             var item = new CustomListViewItem(name, (int)itemType);
             item.DirectoryInfo = dirInfo;
             item.FileInfo = fInfo;
+            item.Type = itemType;
 
             var subItems = new ListViewItem.ListViewSubItem[]
-                      {new ListViewItem.ListViewSubItem(item, itemType.ToString()),
-                   new ListViewItem.ListViewSubItem(item,
-                lastAccessTime.ToShortDateString())};
+            {
+                new ListViewItem.ListViewSubItem(item, itemType.ToString()),
+                new ListViewItem.ListViewSubItem(item, lastAccessTime)
+            };
             item.SubItems.AddRange(subItems);
             return item;
         }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace YetAnotherFileManager
 {
-    enum CustomListViewItemTypeEnum
+    public enum CustomListViewItemTypeEnum
     {
         Directory = 0,
         RemoteDirectory = 1,
